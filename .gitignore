@@ -1,0 +1,7 @@
+# Re-downloaded from nflverse on every run (~150 MB); never commit.
+data/raw/
+.Rhistory
+.RData
+.Rproj.user/
+.DS_Store
+.Renviron

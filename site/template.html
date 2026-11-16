@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Anytime TD Board</title>
+<meta name="description" content="Weekly anytime touchdown scorer projections for QB, RB, WR and TE.">
+<style>
+:root {
+  --bg: #f6f5f1; --surface: #ffffff; --surface-2: #efeee9; --border: #dedcd4;
+  --text: #1c1b18; --muted: #6b6960; --accent: #1f5f4a; --accent-soft: #dcebe4;
+  --pos: #1f7a4d; --neg: #a8432f; --warn-bg: #fbecc8; --warn-text: #7a5300;
+  --bar: #2f7d62; --bar-bg: #e4e2da;
+  --shadow: 0 1px 2px rgba(0,0,0,.05);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141412; --surface: #1d1d1a; --surface-2: #26261f; --border: #34332d;
+    --text: #ecebe5; --muted: #9c9a8f; --accent: #6fc3a0; --accent-soft: #1f3a30;
+    --pos: #6fcf97; --neg: #ef8a73; --warn-bg: #3d3112; --warn-text: #f3cf74;
+    --bar: #5fb592; --bar-bg: #2f2e28; --shadow: none;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #141412; --surface: #1d1d1a; --surface-2: #26261f; --border: #34332d;
+  --text: #ecebe5; --muted: #9c9a8f; --accent: #6fc3a0; --accent-soft: #1f3a30;
+  --pos: #6fcf97; --neg: #ef8a73; --warn-bg: #3d3112; --warn-text: #f3cf74;
+  --bar: #5fb592; --bar-bg: #2f2e28; --shadow: none;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--text);
+  font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 1180px; margin: 0 auto; padding: 28px 16px 64px; }
+header h1 { font-size: 28px; letter-spacing: -.02em; margin: 0 0 4px; }
+.sub { color: var(--muted); font-size: 14px; display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.sub b { color: var(--text); font-weight: 600; }
+
+.controls {
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+  margin: 22px 0 14px; padding: 12px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow);
+}
+select, input[type=search] {
+  font: inherit; font-size: 14px; color: var(--text); background: var(--surface-2);
+  border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; min-width: 0;
+}
+input[type=search] { flex: 1 1 180px; }
+.seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 2px; }
+.seg button {
+  font: inherit; font-size: 13px; font-weight: 600; color: var(--muted); background: none;
+  border: 0; border-radius: 6px; padding: 6px 11px; cursor: pointer;
+}
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+label.chk { font-size: 14px; color: var(--muted); display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+
+.tablebox { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow-x: auto; box-shadow: var(--shadow); }
+table { border-collapse: collapse; width: 100%; min-width: 860px; font-variant-numeric: tabular-nums; }
+th, td { padding: 9px 10px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--border); }
+th:first-child, td:first-child { text-align: left; position: sticky; left: 0; background: var(--surface); z-index: 1; }
+thead th {
+  font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted);
+  font-weight: 600; cursor: pointer; user-select: none; background: var(--surface);
+}
+thead th:hover { color: var(--text); }
+thead th[aria-sort] { color: var(--accent); }
+thead th[aria-sort="descending"]::after { content: " ↓"; }
+thead th[aria-sort="ascending"]::after { content: " ↑"; }
+tbody tr.row { cursor: pointer; }
+tbody tr.row:hover td { background: var(--surface-2); }
+.pname { font-weight: 600; }
+.pmeta { color: var(--muted); font-size: 12px; }
+.badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 5px; margin-left: 6px; background: var(--warn-bg); color: var(--warn-text); vertical-align: 1px; }
+.prob { font-weight: 700; font-size: 16px; }
+.pos { color: var(--pos); font-weight: 600; }
+.neg { color: var(--neg); }
+.dim { color: var(--muted); }
+.score { display: inline-flex; align-items: center; gap: 8px; }
+.score .track { width: 56px; height: 6px; border-radius: 3px; background: var(--bar-bg); overflow: hidden; }
+.score .fill { height: 100%; background: var(--bar); }
+tr.detail td { background: var(--surface-2); text-align: left; white-space: normal; position: static; }
+.dgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px 24px; padding: 6px 4px; }
+.dgrid h4 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.kv { display: flex; justify-content: space-between; font-size: 13px; padding: 2px 0; font-variant-numeric: tabular-nums; }
+.kv span:first-child { color: var(--muted); }
+.empty { padding: 32px; text-align: center; color: var(--muted); }
+.foot { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; color: var(--muted); font-size: 13px; margin-top: 10px; }
+.foot a { color: var(--accent); }
+
+details.method { margin-top: 28px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 4px 18px; }
+details.method summary { cursor: pointer; font-weight: 600; padding: 12px 0; }
+details.method p, details.method li { color: var(--muted); font-size: 14px; max-width: 76ch; }
+details.method strong { color: var(--text); }
+
+@media (max-width: 640px) {
+  header h1 { font-size: 23px; }
+  .wrap { padding-top: 18px; }
+  .controls { gap: 8px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Anytime TD Board</h1>
+    <div class="sub" id="sub"></div>
+  </header>
+
+  <div class="controls" role="group" aria-label="Filters">
+    <select id="week" aria-label="Week"></select>
+    <div class="seg" id="posseg" role="group" aria-label="Position">
+      <button data-pos="ALL" aria-pressed="true">All</button>
+      <button data-pos="RB" aria-pressed="false">RB</button>
+      <button data-pos="WR" aria-pressed="false">WR</button>
+      <button data-pos="TE" aria-pressed="false">TE</button>
+      <button data-pos="QB" aria-pressed="false">QB</button>
+    </div>
+    <select id="team" aria-label="Team"><option value="">All teams</option></select>
+    <input type="search" id="q" placeholder="Search player" aria-label="Search player">
+    <label class="chk"><input type="checkbox" id="linesonly"> With a line</label>
+  </div>
+
+  <div class="tablebox">
+    <table>
+      <thead><tr id="head"></tr></thead>
+      <tbody id="body"></tbody>
+    </table>
+  </div>
+  <div class="foot">
+    <span id="count"></span>
+    <a id="csv" href="#" download>Download this week (CSV)</a>
+  </div>
+
+  <details class="method">
+    <summary>How this works</summary>
+    <p><strong>TD%</strong> is the model's probability the player scores at least one rushing or receiving touchdown (QBs: rushing only). It starts from <em>expected touchdowns per game</em>: every carry and target over the last 5 weeks (60%) and season-to-date (40%), each weighted by how often that kind of look scores league-wide (by yard line, and whether a target was thrown into the end zone). That is adjusted for this week's Vegas implied team total versus the team's own scoring so far, and for the opponent's red-zone TD rate allowed, then recalibrated against the previous season's actual results.</p>
+    <p><strong>Backtest</strong> (2024 to 2026, 7,800 player-games, never calibrated on the season being tested): each tenth of predictions landed within about 3 points of the real scoring rate, except the lowest group (6% predicted vs 9% actual). That beats a flat base-rate guess by about 7% on Brier score. That's a real but modest edge; touchdowns are noisy.</p>
+    <p><strong>Score</strong> (0 to 100) ranks players within the week: 35% high-leverage opportunities (inside-10 carries and targets, end-zone targets, weighted by TD value), 25% share of the team's red-zone opportunities, 25% implied team total, 15% opponent red-zone TD rate allowed. In the backtest, the top fifth by score scored 40% of the time and the bottom fifth 11%.</p>
+    <p><strong>Book</strong> is the consensus anytime-TD price from The Odds API, updated Tuesday afternoon and Friday night. Most books only post the "Yes" side, so that probability still contains the book's margin; <strong>Edge</strong> (TD% minus book%) is therefore conservative. <strong>Fair</strong> is the model's TD% as American odds.</p>
+    <p>Players ruled Out are removed; Questionable and Doubtful players are shown at a full workload, with a badge. A "No recent games" badge means the player hasn't played in the last 5 weeks (injury, inactive, or a lost role), so his TD% rests on earlier-season usage that may no longer apply; treat it skeptically. Games already played that week drop off. Rookies and players with fewer than 2 games this season aren't scored.</p>
+  </details>
+</div>
+
+<script id="tddata" type="application/json">__TD_DATA__</script>
+<script>
+(function () {
+  "use strict";
+  var DATA = JSON.parse(document.getElementById("tddata").textContent);
+  var keys = Object.keys(DATA);
+  var state = { week: keys[0], pos: "ALL", team: "", q: "", lines: false, sort: "td_prob", dir: -1, open: null };
+
+  var COLS = [
+    { k: "player", label: "Player", sortv: function (r) { return r.player; } },
+    { k: "td_prob", label: "TD%" },
+    { k: "fair_price", label: "Fair", sortv: function (r) { return r.td_prob; } },
+    { k: "book_price", label: "Book", sortv: function (r) { return r.book_prob; } },
+    { k: "edge", label: "Edge" },
+    { k: "composite", label: "Score" },
+    { k: "i10", label: "In-10/g", sortv: function (r) { return i10(r); } },
+    { k: "ezt", label: "EZ tgt/g", sortv: function (r) { return ezt(r); } },
+    { k: "rz_share", label: "RZ share" },
+    { k: "implied_total", label: "Team total" },
+    { k: "opp_rz_td_rate", label: "Opp RZ TD%" }
+  ];
+
+  function $(id) { return document.getElementById(id); }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function num(v) { return v === null || v === undefined || v === "" || (typeof v === "number" && isNaN(v)) ? null : Number(v); }
+  function pct(v, d) { v = num(v); return v === null ? "–" : (100 * v).toFixed(d || 0) + "%"; }
+  function fx(v, d) { v = num(v); return v === null ? "–" : v.toFixed(d); }
+  function amer(v) { v = num(v); if (v === null) return "–"; v = Math.round(v); return v > 0 ? "+" + v : String(v); }
+  // Opportunity columns show the last-5-weeks rate; a player with no game in
+  // that window (injured, inactive, demoted) falls back to his season rate.
+  function recent(r) { return num(r.games_l5) !== null && num(r.games_l5) > 0; }
+  function i10(r) {
+    return recent(r) ? (num(r.i10_carries_pg_l5) || 0) + (num(r.i10_targets_pg_l5) || 0)
+                     : (num(r.i10_carries_pg_szn) || 0) + (num(r.i10_targets_pg_szn) || 0);
+  }
+  function ezt(r) { return recent(r) ? num(r.ez_targets_pg_l5) : num(r.ez_targets_pg_szn); }
+
+  // Week dropdown
+  keys.forEach(function (k) {
+    var w = DATA[k]; var o = el("option", null, w.season + " · Week " + w.week); o.value = k; $("week").appendChild(o);
+  });
+
+  function weekObj() { return DATA[state.week]; }
+
+  function fillTeams() {
+    var sel = $("team"); var cur = state.team;
+    while (sel.options.length > 1) sel.remove(1);
+    var teams = {}; weekObj().rows.forEach(function (r) { teams[r.team] = 1; });
+    Object.keys(teams).sort().forEach(function (t) { var o = el("option", null, t); o.value = t; sel.appendChild(o); });
+    if (!teams[cur]) state.team = ""; sel.value = state.team;
+  }
+
+  function renderSub() {
+    var w = weekObj(); var s = $("sub"); s.textContent = "";
+    var pulled = null;
+    w.rows.forEach(function (r) { if (r.odds_pulled_at && (!pulled || r.odds_pulled_at > pulled)) pulled = r.odds_pulled_at; });
+    var a = el("span"); a.appendChild(el("b", null, w.season + " Week " + w.week)); s.appendChild(a);
+    s.appendChild(el("span", null, "Projections updated " + w.built_at));
+    s.appendChild(el("span", null, pulled ? "Lines pulled " + pulled : "No lines pulled yet"));
+    $("csv").setAttribute("href", w.csv);
+  }
+
+  function renderHead() {
+    var tr = $("head"); tr.textContent = "";
+    COLS.forEach(function (c) {
+      var th = el("th", null, c.label); th.scope = "col"; th.tabIndex = 0;
+      if (state.sort === c.k) th.setAttribute("aria-sort", state.dir < 0 ? "descending" : "ascending");
+      function go() {
+        if (state.sort === c.k) state.dir = -state.dir; else { state.sort = c.k; state.dir = c.k === "player" ? 1 : -1; }
+        renderHead(); renderBody();
+      }
+      th.addEventListener("click", go);
+      th.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } });
+      tr.appendChild(th);
+    });
+  }
+
+  function sortValue(r) {
+    var c = COLS.filter(function (c) { return c.k === state.sort; })[0];
+    return c && c.sortv ? c.sortv(r) : r[state.sort];
+  }
+
+  function kv(label, value) { var d = el("div", "kv"); d.appendChild(el("span", null, label)); d.appendChild(el("span", null, value)); return d; }
+  function section(title, items) { var d = el("div"); d.appendChild(el("h4", null, title)); items.forEach(function (i) { d.appendChild(i); }); return d; }
+
+  function detailRow(r) {
+    var tr = el("tr", "detail"); var td = el("td"); td.colSpan = COLS.length;
+    var g = el("div", "dgrid");
+    g.appendChild(section("Last 5 weeks (" + (num(r.games_l5) || 0) + " games)", [
+      kv("Inside-5 carries / g", fx(r.i5_carries_pg_l5, 2)),
+      kv("Inside-10 carries / g", fx(r.i10_carries_pg_l5, 2)),
+      kv("Inside-10 targets / g", fx(r.i10_targets_pg_l5, 2)),
+      kv("End-zone targets / g", fx(r.ez_targets_pg_l5, 2)),
+      kv("Red-zone share", pct(r.rz_share_l5))
+    ]));
+    g.appendChild(section("Season (" + (num(r.games_szn) || 0) + " games)", [
+      kv("Inside-5 carries / g", fx(r.i5_carries_pg_szn, 2)),
+      kv("Inside-10 carries / g", fx(r.i10_carries_pg_szn, 2)),
+      kv("Inside-10 targets / g", fx(r.i10_targets_pg_szn, 2)),
+      kv("End-zone targets / g", fx(r.ez_targets_pg_szn, 2)),
+      kv("Red-zone share", pct(r.rz_share_szn)),
+      kv("Touchdowns", fx(r.tds_szn, 0))
+    ]));
+    g.appendChild(section("Score components (percentile)", [
+      kv("High-leverage looks · 35%", fx(r.hl_pct, 0)),
+      kv("Red-zone share · 25%", fx(r.share_pct, 0)),
+      kv("Team total · 25%", fx(r.env_pct, 0)),
+      kv("Opponent RZ TD% · 15%", fx(r.opp_pct, 0))
+    ]));
+    g.appendChild(section("Game", [
+      kv("Matchup", (r.home ? "vs " : "@ ") + r.opponent),
+      kv("Kickoff", (r.gameday || "") + " " + (r.gametime || "")),
+      kv("Team RZ trips / g (L5)", fx(r.rz_trips_pg_l5, 1)),
+      kv("Book", r.book_price != null ? amer(r.book_price) + " · " + pct(r.book_prob, 1) + " · " + (r.book_n || 0) + " books" + (r.book_devigged ? "" : " · incl. margin") : "no line")
+    ]));
+    td.appendChild(g); tr.appendChild(td); return tr;
+  }
+
+  function renderBody() {
+    var rows = weekObj().rows.filter(function (r) {
+      if (state.pos !== "ALL" && r.position !== state.pos) return false;
+      if (state.team && r.team !== state.team) return false;
+      if (state.lines && num(r.book_prob) === null) return false;
+      if (state.q && r.player.toLowerCase().indexOf(state.q) < 0) return false;
+      return true;
+    });
+    rows.sort(function (a, b) {
+      var x = sortValue(a), y = sortValue(b);
+      if (x === null || x === undefined) return 1; if (y === null || y === undefined) return -1;
+      return (x < y ? -1 : x > y ? 1 : 0) * state.dir;
+    });
+    var body = $("body"); body.textContent = "";
+    if (!rows.length) { var tr0 = el("tr"); var td0 = el("td", "empty", "No players match these filters."); td0.colSpan = COLS.length; tr0.appendChild(td0); body.appendChild(tr0); }
+    rows.forEach(function (r) {
+      var id = r.player + "|" + r.team;
+      var tr = el("tr", "row"); tr.tabIndex = 0; tr.setAttribute("aria-expanded", state.open === id ? "true" : "false");
+      var c0 = el("td"); var nm = el("div", "pname", r.player);
+      if (r.injury_status && r.injury_status !== "Healthy") nm.appendChild(el("span", "badge", r.injury_status));
+      if (!recent(r)) { var nb = el("span", "badge", "No recent games"); nb.title = "No game in the last 5 weeks; TD% uses earlier-season usage only"; nm.appendChild(nb); }
+      c0.appendChild(nm); c0.appendChild(el("div", "pmeta", r.position + " · " + r.team + (r.home ? " vs " : " @ ") + r.opponent));
+      tr.appendChild(c0);
+      tr.appendChild(el("td", "prob", pct(r.td_prob)));
+      tr.appendChild(el("td", "dim", amer(r.fair_price)));
+      tr.appendChild(el("td", r.book_price == null ? "dim" : null, r.book_price == null ? "–" : amer(r.book_price)));
+      var e = num(r.edge); var ec = el("td", e === null ? "dim" : e > 0 ? "pos" : "neg", e === null ? "–" : (e > 0 ? "+" : "") + (100 * e).toFixed(1));
+      tr.appendChild(ec);
+      var sc = el("td"); var sw = el("span", "score"); var trk = el("span", "track"); var fill = el("span", "fill");
+      fill.style.width = Math.max(0, Math.min(100, num(r.composite) || 0)) + "%"; fill.style.display = "block";
+      trk.appendChild(fill); sw.appendChild(trk); sw.appendChild(el("span", null, fx(r.composite, 0))); sc.appendChild(sw); tr.appendChild(sc);
+      tr.appendChild(el("td", null, fx(i10(r), 1)));
+      tr.appendChild(el("td", null, fx(ezt(r), 1)));
+      tr.appendChild(el("td", null, pct(r.rz_share)));
+      tr.appendChild(el("td", null, fx(r.implied_total, 1)));
+      tr.appendChild(el("td", null, pct(r.opp_rz_td_rate)));
+      function toggle() { state.open = state.open === id ? null : id; renderBody(); }
+      tr.addEventListener("click", toggle);
+      tr.addEventListener("keydown", function (ev) { if (ev.key === "Enter") toggle(); });
+      body.appendChild(tr);
+      if (state.open === id) body.appendChild(detailRow(r));
+    });
+    $("count").textContent = rows.length + " of " + weekObj().rows.length + " players";
+  }
+
+  $("week").addEventListener("change", function () { state.week = this.value; state.open = null; fillTeams(); renderSub(); renderBody(); });
+  $("team").addEventListener("change", function () { state.team = this.value; renderBody(); });
+  $("q").addEventListener("input", function () { state.q = this.value.trim().toLowerCase(); renderBody(); });
+  $("linesonly").addEventListener("change", function () { state.lines = this.checked; renderBody(); });
+  Array.prototype.forEach.call(document.querySelectorAll("#posseg button"), function (b) {
+    b.addEventListener("click", function () {
+      state.pos = b.getAttribute("data-pos");
+      Array.prototype.forEach.call(document.querySelectorAll("#posseg button"), function (x) { x.setAttribute("aria-pressed", x === b ? "true" : "false"); });
+      renderBody();
+    });
+  });
+
+  fillTeams(); renderSub(); renderHead(); renderBody();
+})();
+</script>
+</body>
+</html>
